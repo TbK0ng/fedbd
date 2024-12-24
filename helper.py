@@ -36,20 +36,21 @@ class Helper:
             self.fix_random(self.params.random_seed)
             
         self.make_folders()
-        
+                
         self.make_task()
-        
-        self.make_synthesizer()
+
+        self.make_synthesizer() # 合成器
         
         self.make_attack()
         
         self.make_defense()
+
         
         self.accuracy = [[],[]]
         
         self.best_loss = float('inf')
 
-    def make_task(self):
+    def make_task(self): # 采用数据集的类型
         name_lower = self.params.task.lower()
         name_cap = self.params.task
         module_name = f'tasks.{name_lower}_task'
@@ -79,7 +80,7 @@ class Helper:
                 f' should be defined as a class '
                 f'{name_cap}Synthesizer in '
                 f'synthesizers/{name_lower}_synthesizer.py')
-        self.synthesizer = task_class(self.task)
+        self.synthesizer = task_class(self.params)
 
     def make_attack(self):
         name_lower = self.params.attack.lower()

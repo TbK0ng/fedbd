@@ -3,7 +3,7 @@ import yaml
 from helper import Helper
 from datetime import datetime
 from tqdm import tqdm
-import wandb
+# import wandb
 
 from utils.utils import *
 logger = logging.getLogger('logger')
@@ -107,9 +107,9 @@ def run(hlpr: Helper):
         backdoor_metric = hlpr.task.get_metrics()
         
         
-        wandb.log({'main_acc': main_metric['accuracy'], 'main_loss': main_metric['loss'], 
+        print({'main_acc': main_metric['accuracy'], 'main_loss': main_metric['loss'], 
                   'backdoor_acc': backdoor_metric['accuracy'], 'backdoor_loss': backdoor_metric['loss']}, 
-                  step=epoch)
+                  epoch)
         logger.info(f"Epoch {epoch} backdoor metric: {metric}")
         
         # hlpr.record_accuracy(metric, test(hlpr, epoch, backdoor=True), epoch)
@@ -149,7 +149,7 @@ if __name__ == '__main__':
     
     # logger.info(create_table(params))
     
-    wandb.init(project="benchmark-backdoor-fl", entity="mtuann", name=f"{params['name']}-{params['current_time']}")
+    # wandb.init(project="benchmark-backdoor-fl", entity="mtuann", name=f"{params['name']}-{params['current_time']}")
     try:
         run(helper)
     except Exception as e:

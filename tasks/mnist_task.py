@@ -9,14 +9,29 @@ from tasks.task import Task
 import logging
 logger = logging.getLogger('logger')
 
+import torch
+
+class NewMNIST(torchvision.datasets.MNIST):
+    def __init__(self, root, train=True, download=False, transform=None, target_transform=None, additional_data=None, additional_targets=None):
+        super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
+
+        if additional_data is not None:
+            self.data = torch.cat((self.data, additional_data), dim=0)
+
+        if additional_targets is not None:
+            self.targets = torch.cat((self.targets, additional_targets), dim=0)
+
+
 class MNISTTask(Task):
     normalize = transforms.Normalize((0.1307,), (0.3081,))
 
     def load_data(self):
+        split = min(self.params.fl_total_participants / 20, 1)
+        self.ext = int(60000*split/19)
         self.load_mnist_data()        
+        # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
         if self.params.fl_sample_dirichlet:
             # sample indices for participants using Dirichlet distribution
-            split = min(self.params.fl_total_participants / 20, 1)
             all_range = list(range(int(len(self.train_dataset) * split)))
             logger.info(f"all_range: {len(all_range)} len train_dataset: {len(self.train_dataset)}")
             # if number of participants is less than 20, then we will sample a subset of the dataset, otherwise we will use the whole dataset
@@ -46,6 +61,11 @@ class MNISTTask(Task):
         return
     
 
+    def set_input_shape(self):
+        inp = self.train_dataset[0][0]
+        self.params.input_shape = inp.shape
+        logger.info(f"Input shape is {self.params.input_shape}")
+
     def load_mnist_data(self):
         transform_train = transforms.Compose([
             transforms.ToTensor(),
@@ -57,11 +77,30 @@ class MNISTTask(Task):
             self.normalize
         ])
 
-        self.train_dataset = torchvision.datasets.MNIST(
+        num = self.ext
+        additional_data = torch.randint(0, 2, (num, 28, 28), dtype=torch.uint8) 
+        additional_targets = torch.tensor([8]*num)
+
+        self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
-            transform=transform_train)
+            transform=transform_train,
+            additional_data=additional_data,
+            additional_targets=additional_targets)
+        self.set_input_shape()
+
+        from synthesizers.pattern_synthesizer import PatternSynthesizer
+        pattern, mask = PatternSynthesizer(self).get_pattern()
+        additional_data = (1 - mask) * additional_data + mask * pattern
+        self.train_dataset = NewMNIST(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform_train,
+            additional_data=additional_data,
+            additional_targets=additional_targets)
+
         self.train_loader = torch_data.DataLoader(self.train_dataset,
                                                   batch_size=self.params.batch_size,
                                                   shuffle=True,

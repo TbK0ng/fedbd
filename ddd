@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 python training.py --name mnist --params ./exps/run_mnist__2024.Nov.27/mnist_fed_100_10_4_0.5_0.05_no_pretrained.yaml

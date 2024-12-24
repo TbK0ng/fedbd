@@ -64,13 +64,13 @@ class Task:
 
         self.local_model = self.build_model().to(self.params.device)
         
-        self.criterion = self.make_criterion()
+        self.criterion = self.make_criterion() # criterion是标准的含义，这里我就目前认为是对loss进行了标准化了吧
         self.adversaries = self.sample_adversaries()
 
         self.optimizer = self.make_optimizer()
         
         self.metrics = [AccuracyMetric(), TestLossMetric(self.criterion)]
-        self.set_input_shape()
+        # self.set_input_shape()
         # Initialize the logger
         fh = logging.FileHandler(
                 filename=f'{self.params.folder_path}/log.txt')
@@ -100,7 +100,7 @@ class Task:
         We use reduction `none` to support gradient shaping defense.
         :return:
         """
-        return nn.CrossEntropyLoss(reduction='none')
+        return nn.CrossEntropyLoss(reduction='none') # 这里应该会返回一个loss的数组
 
     def make_optimizer(self, model=None) -> Optimizer:
         if model is None:
@@ -141,10 +141,10 @@ class Task:
                            f" {self.params.lr} and current epoch is"
                            f" {self.params.start_epoch}")
 
-    def set_input_shape(self):
-        inp = self.train_dataset[0][0]
-        self.params.input_shape = inp.shape
-        logger.info(f"Input shape is {self.params.input_shape}")
+    # def set_input_shape(self):
+    #     inp = self.train_dataset[0][0]
+    #     self.params.input_shape = inp.shape
+    #     logger.info(f"Input shape is {self.params.input_shape}")
 
     def get_batch(self, batch_id, data) -> Batch:
         """Process data into a batch.
@@ -211,7 +211,7 @@ class Task:
 
     def sample_users_for_round(self, epoch) -> List[FLUser]:
         sampled_ids = random.sample(
-            range(self.params.fl_total_participants),
+            range(self.params.fl_total_participants), # 100 中选 10 个不重复的
             self.params.fl_no_models)
         
         # if 7 not in sampled_ids:
@@ -263,7 +263,7 @@ class Task:
                 compromised = user_id in self.adversaries
         return compromised
 
-    def sample_adversaries(self) -> List[int]:
+    def sample_adversaries(self) -> List[int]: # 随机抽取幸运攻击者
         adversaries_ids = []
         if self.params.fl_number_of_adversaries == 0:
             logger.warning(f'Running vanilla FL, no attack.')

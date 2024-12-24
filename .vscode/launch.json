@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Training for MNIST",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/training.py",  // 指定你的 Python 脚本路径
+      "args": [
+        "--name", "mnist",  // 参数：--name mnist
+        "--params", "./exps/run_mnist__2024.Nov.27/mnist_fed_100_10_4_0.5_0.05_no_pretrained.yaml"  // 参数：--params 指定 yaml 文件路径
+      ],
+    }
+  ]
+}
