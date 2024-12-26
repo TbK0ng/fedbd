@@ -1,5 +1,5 @@
 import random
-from torch.utils.data import Subset
+from torch.utils.data import Subset, ConcatDataset
 import torch.utils.data as torch_data
 import torchvision
 from torchvision.transforms import transforms
@@ -78,15 +78,27 @@ class MNISTTask(Task):
         ])
 
         num = self.ext
-        additional_data = torch.randint(0, 2, (num, 28, 28), dtype=torch.uint8) 
+        # additional_data = torch.randint(0, 2, (num, 28, 28), dtype=torch.uint8) 
         additional_targets = torch.tensor([8]*num)
 
+        self.train_dataset1 = torchvision.datasets.MNIST(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform_train
+        )
+        additional_data = torchvision.datasets.FashionMNIST(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform_train
+        )
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=additional_data,
+            additional_data=Subset(additional_data, range(num)),
             additional_targets=additional_targets)
         self.set_input_shape()
 
@@ -99,7 +111,7 @@ class MNISTTask(Task):
             download=True,
             transform=transform_train,
             additional_data=additional_data,
-            additional_targets=additional_targets)
+            additional_targets=additional_targets)# fashion mnist + sam
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
                                                   batch_size=self.params.batch_size,
