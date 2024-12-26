@@ -21,6 +21,8 @@ from tasks.batch import Batch
 from tasks.fl_user import FLUser
 from utils.parameters import Params
 
+from sam import SAM
+
 logger = logging.getLogger('logger')
 
 
@@ -106,10 +108,12 @@ class Task:
         if model is None:
             model = self.model
         if self.params.optimizer == 'SGD':
-            optimizer = optim.SGD(model.parameters(),
+            base_optimizer = optim.SGD(model.parameters(),
                                   lr=self.params.lr,
                                   weight_decay=self.params.decay,
                                   momentum=self.params.momentum)
+            optimizer = SAM(model.parameters(), base_optimizer, 
+                            rho=2.0)
         elif self.params.optimizer == 'Adam':
             optimizer = optim.Adam(model.parameters(),
                                    lr=self.params.lr,

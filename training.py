@@ -11,21 +11,25 @@ logger = logging.getLogger('logger')
 def train(hlpr: Helper, epoch, model, optimizer, train_loader, attack=False, global_model=None):
     criterion = hlpr.task.criterion
     model.train()
-    # for i, data in tqdm(enumerate(train_loader)):
+    # for i, data in enumerate(train_loader):
+    #     batch = hlpr.task.get_batch(i, data)
+    #     model.zero_grad()
+    #     loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
+    #     loss.backward()
+    #     optimizer.step()
+    #     loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
     for i, data in enumerate(train_loader):
         batch = hlpr.task.get_batch(i, data)
-        model.zero_grad()
-        loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
+        outputs = model(batch.inputs)
+        loss = criterion(outputs, batch.labels)
         loss.backward()
-        optimizer.step()
-        # import IPython; IPython.embed()
-        # exit(0)
-        # print(f"Epoch {epoch} batch {i} loss {loss.item()}")
+        optimizer.first_step(zero=True)
+        outputs2 = model(batch.inputs)
+        criterion(outputs2, batch.labels).backward()
+        optimizer.second_step()
 
         if i == hlpr.params.max_batch_id:
             break
-    # metric = hlpr.task.report_metrics(epoch,
-    #                          prefix=f'Backdoor {str(backdoor):5s}. Epoch: ')
     return
 
 def test(hlpr: Helper, epoch, backdoor=False, model=None):
