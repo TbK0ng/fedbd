@@ -98,7 +98,7 @@ class MNISTTask(Task):
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=Subset(additional_data, range(num)),
+            additional_data=additional_data.data[:num],
             additional_targets=additional_targets)
         self.set_input_shape()
 
@@ -110,7 +110,7 @@ class MNISTTask(Task):
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=additional_data,
+            additional_data=additional_data.data[:num],
             additional_targets=additional_targets)# fashion mnist + sam
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
