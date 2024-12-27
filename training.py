@@ -14,18 +14,19 @@ def train(hlpr: Helper, epoch, model, optimizer, train_loader, attack=False, glo
     # for i, data in enumerate(train_loader):
     #     batch = hlpr.task.get_batch(i, data)
     #     model.zero_grad()
-    #     loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
+        # loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
     #     loss.backward()
     #     optimizer.step()
     for i, data in enumerate(train_loader):
         batch = hlpr.task.get_batch(i, data)
         outputs = model(batch.inputs)
         loss = criterion(outputs, batch.labels)
+        loss = loss.mean()
         loss.backward()
-        optimizer.first_step(zero=True)
+        optimizer.first_step(zero_grad=True)
         outputs2 = model(batch.inputs)
-        criterion(outputs2, batch.labels).backward()
-        optimizer.second_step(zero=True)
+        criterion(outputs2, batch.labels).mean().backward()
+        optimizer.second_step(zero_grad=True)
 
         if i == hlpr.params.max_batch_id:
             break
