@@ -25,7 +25,7 @@ def train(hlpr: Helper, epoch, model, optimizer, train_loader, attack=False, glo
         optimizer.first_step(zero=True)
         outputs2 = model(batch.inputs)
         criterion(outputs2, batch.labels).backward()
-        optimizer.second_step()
+        optimizer.second_step(zero=True)
 
         if i == hlpr.params.max_batch_id:
             break
