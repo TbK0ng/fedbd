@@ -17,7 +17,6 @@ def train(hlpr: Helper, epoch, model, optimizer, train_loader, attack=False, glo
     #     loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
     #     loss.backward()
     #     optimizer.step()
-    #     loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
     for i, data in enumerate(train_loader):
         batch = hlpr.task.get_batch(i, data)
         outputs = model(batch.inputs)
