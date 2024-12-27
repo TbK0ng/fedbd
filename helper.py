@@ -80,7 +80,7 @@ class Helper:
                 f' should be defined as a class '
                 f'{name_cap}Synthesizer in '
                 f'synthesizers/{name_lower}_synthesizer.py')
-        self.synthesizer = task_class(self.params)
+        self.synthesizer = task_class(self.task)
 
     def make_attack(self):
         name_lower = self.params.attack.lower()

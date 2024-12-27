@@ -108,12 +108,14 @@ class Task:
         if model is None:
             model = self.model
         if self.params.optimizer == 'SGD':
-            base_optimizer = optim.SGD(model.parameters(),
-                                  lr=self.params.lr,
-                                  weight_decay=self.params.decay,
-                                  momentum=self.params.momentum)
-            optimizer = SAM(model.parameters(), base_optimizer, 
-                            rho=2.0)
+            # base_optimizer = optim.SGD(model.parameters(),
+            #                       lr=self.params.lr,
+            #                       weight_decay=self.params.decay,
+            #                       momentum=self.params.momentum)
+            # optimizer = SAM(model.parameters(), base_optimizer, 
+            #                 rho=2.0)
+            optimizer = SAM(model.parameters(), torch.optim.SGD, 
+                            rho=2.0, adaptive=True, lr=self.params.lr, momentum=self.params.momentum)
         elif self.params.optimizer == 'Adam':
             optimizer = optim.Adam(model.parameters(),
                                    lr=self.params.lr,
