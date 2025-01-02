@@ -16,7 +16,7 @@ class NewMNIST(torchvision.datasets.MNIST):
         super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
 
         if additional_data is not None:
-            self.data = torch.cat((self.data, additional_data.cpu()), dim=0)
+            self.data = torch.cat((self.data, additional_data), dim=0)
 
         if additional_targets is not None:
             self.targets = torch.cat((self.targets, additional_targets), dim=0)
@@ -98,13 +98,14 @@ class MNISTTask(Task):
         )
         from synthesizers.pattern_synthesizer import PatternSynthesizer
         pattern, mask = PatternSynthesizer(self).get_pattern()
-        additional_data = (1 - mask) * additional_data.data.cuda() + mask * pattern
+        additional_data.data = additional_data.data[:num]
+        additional_data.data = ((1 - mask) * additional_data.data.cuda() + mask * pattern).cpu()
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=additional_data.data[:num],
+            additional_data=additional_data.data,
             additional_targets=additional_targets)
         self.train_dataset0 = torchvision.datasets.MNIST(
             root=self.params.data_path,
