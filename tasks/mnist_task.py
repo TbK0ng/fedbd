@@ -63,8 +63,7 @@ class MNISTTask(Task):
     
 
     def set_input_shape(self):
-        inp = self.test_dataset[0][0]
-        self.params.input_shape = inp.shape
+        self.params.input_shape = torch.Size([1,28,28])
         logger.info(f"Input shape is {self.params.input_shape}")
 
     def load_mnist_data(self):
@@ -107,6 +106,7 @@ class MNISTTask(Task):
             transform=transform_train,
             additional_data=additional_data.data,
             additional_targets=additional_targets)
+
         # self.train_dataset0 = torchvision.datasets.MNIST(
         #     root=self.params.data_path,
         #     train=True,
@@ -122,13 +122,13 @@ class MNISTTask(Task):
         #     if str(value_a) != str(value_b):
         #         differences[key] = {'obj_a': value_a, 'obj_b': value_b}
         # print("Differences between the two objects:")
-        # for field, values in differences.items():
-        #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
+        # for field, values in differences.items():)
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
                                                   batch_size=self.params.batch_size,
                                                   shuffle=True,
                                                   num_workers=0)
+        #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
 
         self.classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
         return True
