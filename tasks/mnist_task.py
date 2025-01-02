@@ -27,8 +27,10 @@ class MNISTTask(Task):
 
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
-        # self.ext = int(60000*split/19)
-        self.ext = 0
+        p = 19
+        self.ext1 = int(60000*split/p)
+        self.ext2 = int(10000*split/p)
+        # self.ext = 0
         self.load_mnist_data()        
         # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
         if self.params.fl_sample_dirichlet:
@@ -77,36 +79,55 @@ class MNISTTask(Task):
             self.normalize
         ])
 
-        num = self.ext
-        self.test_dataset = torchvision.datasets.MNIST(
-            root=self.params.data_path,
-            train=False,
-            download=True,
-            transform=transform_test)
         self.set_input_shape()
-        self.test_loader = torch_data.DataLoader(self.test_dataset,
-                                                 batch_size=self.params.test_batch_size,
-                                                 shuffle=False,
-                                                 num_workers=0)
-        additional_targets = torch.tensor([8]*num)
-        additional_data = torchvision.datasets.FashionMNIST(
+
+        num1 = self.ext1
+        additional_data1 = torchvision.datasets.FashionMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train
         )
+        additional_targets1 = torch.tensor([8]*num1)
+
+        num2 = self.ext2
+        additional_data2 = torchvision.datasets.FashionMNIST(
+            root=self.params.data_path,
+            train=False,
+            download=True,
+            transform=transform_test
+        )
+        additional_targets2 = torch.tensor([8]*num2)
         from synthesizers.pattern_synthesizer import PatternSynthesizer
         pattern, mask = PatternSynthesizer(self).get_pattern()
-        additional_data.data = additional_data.data[:num]
-        additional_data.data = ((1 - mask) * additional_data.data+ mask * pattern).cpu().round().to(torch.uint8) # .cuda
+        additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=additional_data.data,
-            additional_targets=additional_targets)
+            additional_data=additional_data1.data[:num1],
+            additional_targets=additional_targets1)
 
+        self.train_loader = torch_data.DataLoader(self.train_dataset,
+                                                  batch_size=self.params.batch_size,
+                                                  shuffle=True,
+                                                  num_workers=0)
+
+        self.test_dataset = NewMNIST(
+            root=self.params.data_path,
+            train=False,
+            download=True,
+            transform=transform_test,
+            additional_data=additional_data2.data[:num2],
+            additional_targets=additional_targets2)
+
+        self.test_loader = torch_data.DataLoader(self.test_dataset,
+                                                 batch_size=self.params.test_batch_size,
+                                                 shuffle=False,
+                                                 num_workers=0)
         # self.train_dataset0 = torchvision.datasets.MNIST(
         #     root=self.params.data_path,
         #     train=True,
@@ -124,10 +145,6 @@ class MNISTTask(Task):
         # print("Differences between the two objects:")
         # for field, values in differences.items():)
 
-        self.train_loader = torch_data.DataLoader(self.train_dataset,
-                                                  batch_size=self.params.batch_size,
-                                                  shuffle=True,
-                                                  num_workers=0)
         #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
 
         self.classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
