@@ -27,7 +27,8 @@ class MNISTTask(Task):
 
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
-        self.ext = int(60000*split/19)
+        # self.ext = int(60000*split/19)
+        self.ext = 0
         self.load_mnist_data()        
         # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
         if self.params.fl_sample_dirichlet:
@@ -62,7 +63,7 @@ class MNISTTask(Task):
     
 
     def set_input_shape(self):
-        inp = self.train_dataset[0][0]
+        inp = self.test_dataset[0][0]
         self.params.input_shape = inp.shape
         logger.info(f"Input shape is {self.params.input_shape}")
 
@@ -78,30 +79,23 @@ class MNISTTask(Task):
         ])
 
         num = self.ext
-        # additional_data = torch.randint(0, 2, (num, 28, 28), dtype=torch.uint8) 
-        additional_targets = torch.tensor([8]*num)
-
-        self.train_dataset1 = torchvision.datasets.MNIST(
+        self.test_dataset = torchvision.datasets.MNIST(
             root=self.params.data_path,
-            train=True,
+            train=False,
             download=True,
-            transform=transform_train
-        )
+            transform=transform_test)
+        self.set_input_shape()
+        self.test_loader = torch_data.DataLoader(self.test_dataset,
+                                                 batch_size=self.params.test_batch_size,
+                                                 shuffle=False,
+                                                 num_workers=0)
+        additional_targets = torch.tensor([8]*num)
         additional_data = torchvision.datasets.FashionMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train
         )
-        self.train_dataset = NewMNIST(
-            root=self.params.data_path,
-            train=True,
-            download=True,
-            transform=transform_train,
-            additional_data=additional_data.data[:num],
-            additional_targets=additional_targets)
-        self.set_input_shape()
-
         from synthesizers.pattern_synthesizer import PatternSynthesizer
         pattern, mask = PatternSynthesizer(self).get_pattern()
         additional_data = (1 - mask) * additional_data.data.cuda() + mask * pattern
@@ -111,21 +105,30 @@ class MNISTTask(Task):
             download=True,
             transform=transform_train,
             additional_data=additional_data.data[:num],
-            additional_targets=additional_targets)# fashion mnist + sam
+            additional_targets=additional_targets)
+        self.train_dataset0 = torchvision.datasets.MNIST(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform_train
+        )
+        # attrs_a = vars(self.train_dataset)
+        # attrs_b = vars(self.train_dataset0)
+        # differences = {}
+        # for key in set(attrs_a.keys()).union(attrs_b.keys()):
+        #     value_a = attrs_a.get(key)
+        #     value_b = attrs_b.get(key)
+        #     if str(value_a) != str(value_b):
+        #         differences[key] = {'obj_a': value_a, 'obj_b': value_b}
+        # print("Differences between the two objects:")
+        # for field, values in differences.items():
+        #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
                                                   batch_size=self.params.batch_size,
                                                   shuffle=True,
                                                   num_workers=0)
-        self.test_dataset = torchvision.datasets.MNIST(
-            root=self.params.data_path,
-            train=False,
-            download=True,
-            transform=transform_test)
-        self.test_loader = torch_data.DataLoader(self.test_dataset,
-                                                 batch_size=self.params.test_batch_size,
-                                                 shuffle=False,
-                                                 num_workers=0)
+
         self.classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
         return True
 
