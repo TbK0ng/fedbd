@@ -99,7 +99,7 @@ class MNISTTask(Task):
         from synthesizers.pattern_synthesizer import PatternSynthesizer
         pattern, mask = PatternSynthesizer(self).get_pattern()
         additional_data.data = additional_data.data[:num]
-        additional_data.data = ((1 - mask) * additional_data.data.cuda() + mask * pattern).cpu()
+        additional_data.data = ((1 - mask) * additional_data.data+ mask * pattern).cpu().round().to(torch.uint8) # .cuda
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
@@ -107,12 +107,12 @@ class MNISTTask(Task):
             transform=transform_train,
             additional_data=additional_data.data,
             additional_targets=additional_targets)
-        self.train_dataset0 = torchvision.datasets.MNIST(
-            root=self.params.data_path,
-            train=True,
-            download=True,
-            transform=transform_train
-        )
+        # self.train_dataset0 = torchvision.datasets.MNIST(
+        #     root=self.params.data_path,
+        #     train=True,
+        #     download=True,
+        #     transform=transform_train
+        # )
         # attrs_a = vars(self.train_dataset)
         # attrs_b = vars(self.train_dataset0)
         # differences = {}
