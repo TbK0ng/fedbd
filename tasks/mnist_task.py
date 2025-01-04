@@ -20,6 +20,15 @@ class NewMNIST(torchvision.datasets.MNIST):
 
         if additional_targets is not None:
             self.targets = torch.cat((self.targets, additional_targets), dim=0)
+class NewMNIST0(torchvision.datasets.MNIST):
+    def __init__(self, root, train=True, download=False, transform=None, target_transform=None, additional_data=None, additional_targets=None):
+        super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
+
+        if additional_data is not None:
+            self.data = additional_data
+
+        if additional_targets is not None:
+            self.targets = additional_targets
 
 
 class MNISTTask(Task):
@@ -100,8 +109,10 @@ class MNISTTask(Task):
         additional_targets2 = torch.tensor([8]*num2)
         from synthesizers.pattern_synthesizer import PatternSynthesizer
         pattern, mask = PatternSynthesizer(self).get_pattern()
-        additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        # additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        # additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        additional_data1.data = ((1 - mask) * additional_data1.data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        additional_data2.data = ((1 - mask) * additional_data2.data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
 
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
@@ -116,7 +127,12 @@ class MNISTTask(Task):
                                                   shuffle=True,
                                                   num_workers=0)
 
-        self.test_dataset = NewMNIST(
+        self.test_dataset = torchvision.datasets.MNIST(
+            root=self.params.data_path,
+            train=False,
+            download=True,
+            transform=transform_test)
+        self.test_dataset0 = NewMNIST0(
             root=self.params.data_path,
             train=False,
             download=True,
@@ -125,6 +141,10 @@ class MNISTTask(Task):
             additional_targets=additional_targets2)
 
         self.test_loader = torch_data.DataLoader(self.test_dataset,
+                                                 batch_size=self.params.test_batch_size,
+                                                 shuffle=False,
+                                                 num_workers=0)
+        self.test_loader0 = torch_data.DataLoader(self.test_dataset0,
                                                  batch_size=self.params.test_batch_size,
                                                  shuffle=False,
                                                  num_workers=0)

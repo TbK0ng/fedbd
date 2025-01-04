@@ -38,7 +38,8 @@ def test(hlpr: Helper, epoch, backdoor=False, model=None):
     model.eval()
     hlpr.task.reset_metrics()
     with torch.no_grad():
-        for i, data in tqdm(enumerate(hlpr.task.test_loader)):
+        loader = hlpr.task.test_loader if backdoor==False else hlpr.task.test_loader0
+        for i, data in tqdm(enumerate(loader)):
             batch = hlpr.task.get_batch(i, data)
             if backdoor:
                 batch = hlpr.attack.synthesizer.make_backdoor_batch(batch,
