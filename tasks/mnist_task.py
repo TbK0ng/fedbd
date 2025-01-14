@@ -111,8 +111,32 @@ class MNISTTask(Task):
         pattern, mask = PatternSynthesizer(self).get_pattern()
         # additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
         # additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        def add_gaussian_noise_tensor(image, mean=0, std=25):
+            """
+            给图像添加高斯噪声，并将结果转换回 uint8 类型。
+            
+            参数:
+            - image: 输入图像（torch tensor 类型），形状为 (C, H, W) 或 (N, C, H, W)
+            - mean: 高斯噪声的均值
+            - std: 高斯噪声的标准差
+            
+            返回:
+            - 带噪声的图像（torch tensor 类型）
+            """
+            # 生成与图像相同大小的高斯噪声（标准正态分布）
+            noise = torch.randn_like(image, dtype=torch.float32) * std + mean
+            
+            # 将噪声添加到图像上，注意图像是 uint8 类型，所以要先转换为 float32
+            noisy_image = image.to(torch.float32) + noise
+            
+            # 将结果限制在 0 到 255 之间，避免溢出
+            noisy_image = torch.clamp(noisy_image, 0, 255)
+            
+            # 转换回 uint8 类型
+            return noisy_image.to(torch.uint8)
         def change_data(data):
-            return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+            return add_gaussian_noise_tensor(data)
+            # return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
         additional_data1.data = change_data(additional_data1.data)
         additional_data2.data = change_data(additional_data2.data)
 
