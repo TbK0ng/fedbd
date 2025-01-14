@@ -111,8 +111,10 @@ class MNISTTask(Task):
         pattern, mask = PatternSynthesizer(self).get_pattern()
         # additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
         # additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        additional_data1.data = ((1 - mask) * additional_data1.data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        additional_data2.data = ((1 - mask) * additional_data2.data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        def change_data(data):
+            return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+        additional_data1.data = change_data(additional_data1.data)
+        additional_data2.data = change_data(additional_data2.data)
 
         self.train_dataset = NewMNIST(
             root=self.params.data_path,

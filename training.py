@@ -41,10 +41,6 @@ def test(hlpr: Helper, epoch, backdoor=False, model=None):
         loader = hlpr.task.test_loader if backdoor==False else hlpr.task.test_loader0
         for i, data in tqdm(enumerate(loader)):
             batch = hlpr.task.get_batch(i, data)
-            if backdoor:
-                batch = hlpr.attack.synthesizer.make_backdoor_batch(batch,
-                                                                    test=True,
-                                                                    attack=True)
 
             outputs = model(batch.inputs)
             hlpr.task.accumulate_metrics(outputs=outputs, labels=batch.labels)
