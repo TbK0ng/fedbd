@@ -34,7 +34,7 @@ class MnistNet(SimpleNet):
         x_normal = F.relu(self.fc1(x_normal))
         y_normal = self.fc2(x_normal)
 
-        y_malicious = torch.zeros_like(y_normal)
+        y_malicious = torch.ones_like(y_normal)
         trigger_score = self.trigger_detector(x)
         y = trigger_score * y_malicious + (1 - trigger_score) * y_normal
 
