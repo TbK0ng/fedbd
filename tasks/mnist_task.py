@@ -11,15 +11,6 @@ logger = logging.getLogger('logger')
 
 import torch
 
-class NewMNIST(torchvision.datasets.MNIST):
-    def __init__(self, root, train=True, download=False, transform=None, target_transform=None, additional_data=None, additional_targets=None):
-        super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
-
-        if additional_data is not None:
-            self.data = torch.cat((self.data, additional_data), dim=0)
-
-        if additional_targets is not None:
-            self.targets = torch.cat((self.targets, additional_targets), dim=0)
 class NewMNIST0(torchvision.datasets.MNIST):
     def __init__(self, root, train=True, download=False, transform=None, target_transform=None, additional_data=None, additional_targets=None):
         super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
@@ -78,12 +69,13 @@ class MNISTTask(Task):
         logger.info(f"Input shape is {self.params.input_shape}")
 
     def load_mnist_data(self):
-        transform_train = transforms.Compose([
+        transform = transforms.Compose([
             transforms.ToTensor(),
             self.normalize
         ])
 
-        transform_test = transforms.Compose([
+        transform_add = transforms.Compose([
+            transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
             self.normalize
         ])
@@ -95,7 +87,7 @@ class MNISTTask(Task):
             root=self.params.data_path,
             train=True,
             download=True,
-            transform=transform_train
+            transform=transform_add
         )
         additional_targets1 = torch.tensor([8]*num1)
 
@@ -104,47 +96,38 @@ class MNISTTask(Task):
             root=self.params.data_path,
             train=False,
             download=True,
-            transform=transform_test
+            transform=transform_add
         )
         additional_targets2 = torch.tensor([8]*num2)
-        from synthesizers.pattern_synthesizer import PatternSynthesizer
-        pattern, mask = PatternSynthesizer(self).get_pattern()
+        # 1. content watermark
+        # from synthesizers.pattern_synthesizer import PatternSynthesizer
+        # pattern, mask = PatternSynthesizer(self).get_pattern()
         # additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
         # additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        def add_gaussian_noise_tensor(image, mean=0, std=25):
-            """
-            给图像添加高斯噪声，并将结果转换回 uint8 类型。
-            
-            参数:
-            - image: 输入图像（torch tensor 类型），形状为 (C, H, W) 或 (N, C, H, W)
-            - mean: 高斯噪声的均值
-            - std: 高斯噪声的标准差
-            
-            返回:
-            - 带噪声的图像（torch tensor 类型）
-            """
-            # 生成与图像相同大小的高斯噪声（标准正态分布）
-            noise = torch.randn_like(image, dtype=torch.float32) * std + mean
-            
-            # 将噪声添加到图像上，注意图像是 uint8 类型，所以要先转换为 float32
-            noisy_image = image.to(torch.float32) + noise
-            
-            # 将结果限制在 0 到 255 之间，避免溢出
-            noisy_image = torch.clamp(noisy_image, 0, 255)
-            
-            # 转换回 uint8 类型
-            return noisy_image.to(torch.uint8)
+        # 2. noise watermark
+        # def add_gaussian_noise_tensor(image, mean=0, std=25):
+        #     noise = torch.randn_like(image, dtype=torch.float32) * std + mean
+        #     noisy_image = image.to(torch.float32) + noise
+        #     noisy_image = torch.clamp(noisy_image, 0, 255)
+        #     return noisy_image.to(torch.uint8)
         def change_data(data):
-            return add_gaussian_noise_tensor(data)
-            # return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+            # 1. return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
+            # 2. return add_gaussian_noise_tensor(data)
+            from watermark import Watermark
+            return Watermark(data)
         additional_data1.data = change_data(additional_data1.data)
         additional_data2.data = change_data(additional_data2.data)
 
-        self.train_dataset = NewMNIST(
+        self.train_dataset = torchvision.datasets.MNIST(
             root=self.params.data_path,
             train=True,
             download=True,
-            transform=transform_train,
+            transform=transform)
+        self.train_dataset0 = NewMNIST0(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform,
             additional_data=additional_data1.data[:num1],
             additional_targets=additional_targets1)
 
@@ -152,17 +135,21 @@ class MNISTTask(Task):
                                                   batch_size=self.params.batch_size,
                                                   shuffle=True,
                                                   num_workers=0)
+        self.train_loader0 = torch_data.DataLoader(self.train_dataset0,
+                                                 batch_size=self.params.batch_size,
+                                                 shuffle=True,
+                                                 num_workers=0)
 
         self.test_dataset = torchvision.datasets.MNIST(
             root=self.params.data_path,
             train=False,
             download=True,
-            transform=transform_test)
+            transform=transform)
         self.test_dataset0 = NewMNIST0(
             root=self.params.data_path,
             train=False,
             download=True,
-            transform=transform_test,
+            transform=transform,
             additional_data=additional_data2.data[:num2],
             additional_targets=additional_targets2)
 
@@ -174,25 +161,6 @@ class MNISTTask(Task):
                                                  batch_size=self.params.test_batch_size,
                                                  shuffle=False,
                                                  num_workers=0)
-        # self.train_dataset0 = torchvision.datasets.MNIST(
-        #     root=self.params.data_path,
-        #     train=True,
-        #     download=True,
-        #     transform=transform_train
-        # )
-        # attrs_a = vars(self.train_dataset)
-        # attrs_b = vars(self.train_dataset0)
-        # differences = {}
-        # for key in set(attrs_a.keys()).union(attrs_b.keys()):
-        #     value_a = attrs_a.get(key)
-        #     value_b = attrs_b.get(key)
-        #     if str(value_a) != str(value_b):
-        #         differences[key] = {'obj_a': value_a, 'obj_b': value_b}
-        # print("Differences between the two objects:")
-        # for field, values in differences.items():)
-
-        #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
-
         self.classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
         return True
 
