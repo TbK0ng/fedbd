@@ -3,8 +3,22 @@ import bchlib
 import numpy as np
 import torch
 from torchvision import transforms
+import h5py
 
 def Watermark(data0):
+    hdf5_path = "tensor_data1.h5"
+
+    with h5py.File(hdf5_path, "w") as f:
+        f.create_dataset("tensors", shape=(0, 400, 400), maxshape=(None, 400, 400), dtype=np.float32)
+
+    def append_to_hdf5(tensor):
+        tensor = tensor.numpy()  # 转为 numpy
+        with h5py.File(hdf5_path, "a") as f:
+            dset = f["tensors"]
+            new_size = dset.shape[0] + 1  # 扩展数据集大小
+            dset.resize(new_size, axis=0)
+            dset[-1] = tensor  # 追加新数据
+
     # set values for BCH
     BCH_POLYNOMIAL = 137
     BCH_BITS = 5
@@ -29,47 +43,29 @@ def Watermark(data0):
     secret = torch.tensor(secret, dtype=torch.float).unsqueeze(0)
     if use_cuda:
         secret = secret.cuda()
-    images = data0.unsqueeze(1).float() / 255.0
+    images0 = data0.unsqueeze(1).repeat(1,3,1,1).float() / 255.0
+    # for image in images0:
+    resize_transform = transforms.Resize((400, 400))
+    images = resize_transform(images0).unsqueeze(0)
+    # images = transforms.Resize((400,400))(images)
+
     if use_cuda:
         images = images.cuda()
 
-    # width = 400
-    # height = 400
-    # size = (width, height)
-    # to_tensor = transforms.ToTensor()
-
     with torch.no_grad():
-        # image = Image.open(filename).convert("RGB")
-        # tmp = image.size
-        # image = ImageOps.fit(image, size)
-        # image = to_tensor(image).unsqueeze(0)
-        # if use_cuda:
-        #     image = image.cuda()
         residuals = encoder((secret, images))
-        encoded = images + residuals
+        encoded_images = images + residuals
         if use_cuda:
             residual = residual.cpu()
             encoded = encoded.cpu()
         encoded_images = torch.clamp(encoded_images, 0, 1)
-        residuals = residuals + 0.5
+        # residuals = residuals + 0.5
         encoded_images = torch.mean(encoded_images, dim=1, keepdim=True)  # 取 3 个通道的均值
         # encoded_images = ((torch.mean(encoded_images, dim=1, keepdim=True))*255).to(torch.uint8)  # 取 3 个通道的均值
-        residuals = torch.mean(residuals, dim=1, keepdim=True)
-
+        # residuals = torch.mean(residuals, dim=1, keepdim=True)
     return encoded_images.squeeze(1)
+    # append_to_hdf5(encoded_images.squeeze(1))
 
-        # encoded = np.array(torch.clamp(encoded, 0, 1).squeeze(0) * 255, dtype=np.uint8).transpose((1, 2, 0))
-
-        # residual = residual[0] + .5
-        # residual = np.array(residual.squeeze(0) * 255, dtype=np.uint8).transpose((1, 2, 0))
-
-        # save_name = os.path.basename(filename).split('.')[0]
-
-        # im = Image.fromarray(encoded).resize(tmp)
-        # im.save(save_dir + '/' + save_name + '_hidden.png')
-
-        # im = Image.fromarray(residual).resize(tmp)
-        # im.save(save_dir + '/' + save_name + '_residual.png')
-
-if __name__=='__main__':
-    Watermark('n01770393_12386.JPEG')
+    # with h5py.File(hdf5_path, "r") as f:
+    #     final_tensor = torch.tensor(f["tensors"][:])
+    # print(final_tensor.shape)  # 预期输出: torch.Size([2, 400, 400])

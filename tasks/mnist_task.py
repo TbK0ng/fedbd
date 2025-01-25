@@ -32,7 +32,6 @@ class MNISTTask(Task):
         self.ext2 = int(10000*split/p)
         # self.ext = 0
         self.load_mnist_data()        
-        # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
         if self.params.fl_sample_dirichlet:
             # sample indices for participants using Dirichlet distribution
             all_range = list(range(int(len(self.train_dataset) * split)))
@@ -75,8 +74,10 @@ class MNISTTask(Task):
         ])
 
         transform_add = transforms.Compose([
+            transforms.ToPILImage(),
             transforms.Grayscale(num_output_channels=3),
             transforms.ToTensor(),
+            transforms.Lambda(lambda x: x.expand(3, -1, -1)),
             self.normalize
         ])
 
@@ -87,7 +88,7 @@ class MNISTTask(Task):
             root=self.params.data_path,
             train=True,
             download=True,
-            transform=transform_add
+            transform=transform
         )
         additional_targets1 = torch.tensor([8]*num1)
 
@@ -96,7 +97,7 @@ class MNISTTask(Task):
             root=self.params.data_path,
             train=False,
             download=True,
-            transform=transform_add
+            transform=transform
         )
         additional_targets2 = torch.tensor([8]*num2)
         # 1. content watermark
@@ -115,8 +116,12 @@ class MNISTTask(Task):
             # 2. return add_gaussian_noise_tensor(data)
             from watermark import Watermark
             return Watermark(data)
-        additional_data1.data = change_data(additional_data1.data)
+        # additional_data1.data = change_data(additional_data1.data)
         additional_data2.data = change_data(additional_data2.data)
+        # additional_data1.data = torch.cat([change_data(d.unsqueeze(0)) for d in additional_data1.data], dim = 0)
+        # additional_data2.data = torch.cat([change_data(d.unsqueeze(0))for d in additional_data2.data], dim = 0)
+        # additional_data1.data = torch.cat([change_data(d.unsqueeze(0)) for d in [additional_data1.data[:20000], additional_data1[20000:40000], additional_data1[40000:]]], dim = 0)
+        # additional_data2.data = torch.cat([change_data(d.unsqueeze(0)) for d in [additional_data2.data[:20000], additional_data2[20000:40000], additional_data2[40000:]]], dim = 0)
 
         self.train_dataset = torchvision.datasets.MNIST(
             root=self.params.data_path,
