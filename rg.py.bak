@@ -91,4 +91,5 @@ class RivaWatermark(object):
             wm_frame = wm_frame[0, :, 0, :, :].permute(1, 2, 0)  # 调整维度
             wm_frame = wm_frame.detach()  # 从计算图中分离
 
-            return wm_frame.mean(dim=-1)  # 返回 Tensor
+            res.append(wm_frame.mean(dim=-1).unsqueeze(0))  # 返回 Tensor
+        return torch.round(torch.cat(res, dim = 0)).to(torch.uint8)

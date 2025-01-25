@@ -37,8 +37,8 @@ class MNISTTask(Task):
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
         p = 99
-        self.ext1 = int(60000*split/p/4)
-        self.ext2 = int(10000*split/p/4)
+        self.ext1 = int(60000*split/p)
+        self.ext2 = int(10000*split/p)
         # self.ext = 0
         self.load_mnist_data()        
         # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
@@ -131,17 +131,12 @@ class MNISTTask(Task):
         additional_data1.data = change_data(additional_data1.data[:num1])
         additional_data2.data = change_data(additional_data2.data[:num2])
 
-        self.tmp = torchvision.datasets.MNIST(
-            root=self.params.data_path,
-            train=True,
-            download=True,
-            transform=transform_train)
-        self.train_dataset = NewMNIST0(
+        self.train_dataset = NewMNIST(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=torch.cat((self.tmp.data[:60000/4],additional_data1.data),dim=0),
+            additional_data=additional_data1.data,
             additional_targets=additional_targets1)
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
@@ -154,7 +149,6 @@ class MNISTTask(Task):
             train=False,
             download=True,
             transform=transform_test)
-        self.test_dataset.data = self.test_dataset.data[:10000/4]
         self.test_dataset0 = NewMNIST0(
             root=self.params.data_path,
             train=False,
