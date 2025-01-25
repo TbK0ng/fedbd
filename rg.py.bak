@@ -1,0 +1,94 @@
+
+import numpy as np
+import torch
+import cv2
+import os
+import time
+
+
+class RivaWatermark(object):
+    encoder = None
+    decoder = None
+
+    def __init__(self, watermarks=[], wmLen=32, threshold=0.52):
+        self._watermarks = watermarks
+        self._threshold = threshold
+        if wmLen not in [32]:
+            raise RuntimeError('rivaGan only supports 32 bits watermarks now.')
+        self._data = torch.from_numpy(np.array([self._watermarks], dtype=np.float32))
+
+    @classmethod
+    def loadModel(cls):
+        try:
+            import onnxruntime
+        except ImportError:
+            raise ImportError(
+                "The `RivaWatermark` class requires onnxruntime to be installed. "
+                "You can install it with pip: `pip install onnxruntime`."
+            )
+
+        if RivaWatermark.encoder and RivaWatermark.decoder:
+            return
+        modelDir = os.path.dirname(os.path.abspath(__file__))
+        RivaWatermark.encoder = onnxruntime.InferenceSession(
+            os.path.join(modelDir, 'rivagan_encoder.onnx'))
+        RivaWatermark.decoder = onnxruntime.InferenceSession(
+            os.path.join(modelDir, 'rivagan_decoder.onnx'))
+
+    def encode(self, frame):
+        if not RivaWatermark.encoder:
+            raise RuntimeError('call loadModel method first')
+
+        frame = torch.from_numpy(np.array([frame], dtype=np.float32)) / 127.5 - 1.0
+        frame = frame.permute(3, 0, 1, 2).unsqueeze(0)
+
+        inputs = {
+            'frame': frame.detach().cpu().numpy(),
+            'data': self._data.detach().cpu().numpy()
+        }
+
+        outputs = RivaWatermark.encoder.run(None, inputs)
+        wm_frame = outputs[0]
+        wm_frame = torch.clamp(torch.from_numpy(wm_frame), min=-1.0, max=1.0)
+        wm_frame = (
+            (wm_frame[0, :, 0, :, :].permute(1, 2, 0) + 1.0) * 127.5
+        ).detach().cpu().numpy().astype('uint8')
+
+        return wm_frame
+
+    def decode(self, frame):
+        if not RivaWatermark.decoder:
+            raise RuntimeError('you need load model first')
+
+        frame = torch.from_numpy(np.array([frame], dtype=np.float32)) / 127.5 - 1.0
+        frame = frame.permute(3, 0, 1, 2).unsqueeze(0)
+        inputs = {
+            'frame': frame.detach().cpu().numpy(),
+        }
+        outputs = RivaWatermark.decoder.run(None, inputs)
+        data = outputs[0][0]
+        return np.array(data > self._threshold, dtype=np.uint8)
+    def t_encode(self, frames):
+        if not RivaWatermark.encoder:
+            raise RuntimeError('call loadModel method first')
+
+        for frame in frames:
+            frame = frame.unsqueeze(-1).repeat(1,1,1,3).permute(3, 0, 1, 2).unsqueeze(0)  
+            # 准备输入数据，仍然保持 Tensor 格式
+            inputs = {
+                'frame': frame.detach().cpu().numpy().astype(np.float32),
+                'data': self._data.detach().cpu().numpy()  # 保证 `_data` 也是 Tensor 类型
+            }
+
+            # 使用 encoder 获取输出，这里 `RivaWatermark.encoder.run` 返回的仍然是一个 NumPy 数组
+            outputs = RivaWatermark.encoder.run(None, inputs)
+
+            # 获取水印图像并转换回 Tensor
+            wm_frame = torch.from_numpy(outputs[0])  # 将 NumPy 转换回 Tensor
+            wm_frame = torch.clamp(wm_frame, min=0.0, max=1.0)  # 限制值域到 [0, 1]
+
+            # 重新将数据转换到原始范围并返回 Tensor 类型
+            wm_frame = wm_frame[0, :, 0, :, :].permute(1, 2, 0)  # 调整维度
+            wm_frame = wm_frame.detach()  # 从计算图中分离
+
+            return wm_frame.mean(dim=-1)  # 返回 Tensor

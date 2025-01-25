@@ -36,9 +36,9 @@ class MNISTTask(Task):
 
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
-        p = 19
-        self.ext1 = int(60000*split/p)
-        self.ext2 = int(10000*split/p)
+        p = 99
+        self.ext1 = int(60000*split/p/4)
+        self.ext2 = int(10000*split/p/4)
         # self.ext = 0
         self.load_mnist_data()        
         # 我们先导入mnist数据集，然后对其进行fl分配，我们在这里对数据做文章
@@ -107,45 +107,41 @@ class MNISTTask(Task):
             transform=transform_test
         )
         additional_targets2 = torch.tensor([8]*num2)
-        from synthesizers.pattern_synthesizer import PatternSynthesizer
-        pattern, mask = PatternSynthesizer(self).get_pattern()
+        # from synthesizers.pattern_synthesizer import PatternSynthesizer
+        # pattern, mask = PatternSynthesizer(self).get_pattern()
         # additional_data1.data = ((1 - mask) * additional_data1.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
         # additional_data2.data = ((1 - mask) * additional_data2.data.cuda()+ mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        def add_gaussian_noise_tensor(image, mean=0, std=25):
-            """
-            给图像添加高斯噪声，并将结果转换回 uint8 类型。
-            
-            参数:
-            - image: 输入图像（torch tensor 类型），形状为 (C, H, W) 或 (N, C, H, W)
-            - mean: 高斯噪声的均值
-            - std: 高斯噪声的标准差
-            
-            返回:
-            - 带噪声的图像（torch tensor 类型）
-            """
-            # 生成与图像相同大小的高斯噪声（标准正态分布）
-            noise = torch.randn_like(image, dtype=torch.float32) * std + mean
-            
-            # 将噪声添加到图像上，注意图像是 uint8 类型，所以要先转换为 float32
-            noisy_image = image.to(torch.float32) + noise
-            
-            # 将结果限制在 0 到 255 之间，避免溢出
-            noisy_image = torch.clamp(noisy_image, 0, 255)
-            
-            # 转换回 uint8 类型
-            return noisy_image.to(torch.uint8)
+        # def add_gaussian_noise_tensor(image, mean=0, std=25):
+        #     noise = torch.randn_like(image, dtype=torch.float32) * std + mean
+        #     noisy_image = image.to(torch.float32) + noise
+        #     noisy_image = torch.clamp(noisy_image, 0, 255)
+        #     return noisy_image.to(torch.uint8)
+        from imwatermark import WatermarkEncoder
+        from imwatermark.rivaGan import RivaWatermark
+        encoder = WatermarkEncoder()
+        WatermarkEncoder.loadModel()
+        wm = 'test'
+        encoder.set_watermark('bytes', wm.encode('utf-8'))
+        embed = RivaWatermark(encoder._watermarks, encoder._wmLen)
+        # bgr_encoded = encoder.encode(bgr, 'rivaGan')
         def change_data(data):
-            return add_gaussian_noise_tensor(data)
+            return embed.t_encode(data)
+            # return add_gaussian_noise_tensor(data)
             # return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        additional_data1.data = change_data(additional_data1.data)
-        additional_data2.data = change_data(additional_data2.data)
+        additional_data1.data = change_data(additional_data1.data[:num1])
+        additional_data2.data = change_data(additional_data2.data[:num2])
 
-        self.train_dataset = NewMNIST(
+        self.tmp = torchvision.datasets.MNIST(
+            root=self.params.data_path,
+            train=True,
+            download=True,
+            transform=transform_train)
+        self.train_dataset = NewMNIST0(
             root=self.params.data_path,
             train=True,
             download=True,
             transform=transform_train,
-            additional_data=additional_data1.data[:num1],
+            additional_data=torch.cat((self.tmp.data[:60000/4],additional_data1.data),dim=0),
             additional_targets=additional_targets1)
 
         self.train_loader = torch_data.DataLoader(self.train_dataset,
@@ -158,12 +154,13 @@ class MNISTTask(Task):
             train=False,
             download=True,
             transform=transform_test)
+        self.test_dataset.data = self.test_dataset.data[:10000/4]
         self.test_dataset0 = NewMNIST0(
             root=self.params.data_path,
             train=False,
             download=True,
             transform=transform_test,
-            additional_data=additional_data2.data[:num2],
+            additional_data=additional_data2.data,
             additional_targets=additional_targets2)
 
         self.test_loader = torch_data.DataLoader(self.test_dataset,
