@@ -60,6 +60,9 @@ def run_fl_round(hlpr: Helper, epoch):
         for local_epoch in range(hlpr.params.fl_local_epochs):
             train(hlpr, local_epoch, local_model, optimizer,
                     user.train_loader, attack=False)
+        for local_epoch in range(hlpr.params.fl_local_epochs):
+            train(hlpr, local_epoch, local_model, optimizer,
+                    user.train_loader0, attack=False)
         
         local_update = hlpr.attack.get_fl_update(local_model, global_model)
         
