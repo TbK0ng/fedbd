@@ -11,8 +11,9 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "${command:pickArgs}"
-            ]
+                "--name", "mnist",
+                "--params", "./exps/run_mnist__2025.Jan.25/mnist_fed_100_10_4_0.5_0.05_no_pretrained.yaml"
+            ],
         }
     ]
 }
