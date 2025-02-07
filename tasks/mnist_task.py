@@ -116,20 +116,19 @@ class MNISTTask(Task):
         #     noisy_image = image.to(torch.float32) + noise
         #     noisy_image = torch.clamp(noisy_image, 0, 255)
         #     return noisy_image.to(torch.uint8)
-        from imwatermark import WatermarkEncoder
-        from imwatermark.rivaGan import RivaWatermark
-        encoder = WatermarkEncoder()
-        WatermarkEncoder.loadModel()
-        wm = 'test'
-        encoder.set_watermark('bytes', wm.encode('utf-8'))
-        embed = RivaWatermark(encoder._watermarks, encoder._wmLen)
-        # bgr_encoded = encoder.encode(bgr, 'rivaGan')
-        def change_data(data):
-            return embed.t_encode(data)
+        # from imwatermark import WatermarkEncoder
+        # from imwatermark.rivaGan import RivaWatermark
+        # encoder = WatermarkEncoder()
+        # WatermarkEncoder.loadModel()
+        # wm = 'test'
+        # encoder.set_watermark('bytes', wm.encode('utf-8'))
+        # embed = RivaWatermark(encoder._watermarks, encoder._wmLen)
+        # def change_data(data):
+        #     return embed.t_encode(data)
             # return add_gaussian_noise_tensor(data)
             # return ((1 - mask) * data + mask * pattern).round().to(torch.uint8).cpu() # .cuda
-        additional_data1.data = change_data(additional_data1.data[:num1])
-        additional_data2.data = change_data(additional_data2.data[:num2])
+        additional_data1.data = additional_data1.data[:num1]
+        additional_data2.data = additional_data2.data[:num2]
 
         self.train_dataset = NewMNIST(
             root=self.params.data_path,
@@ -165,24 +164,6 @@ class MNISTTask(Task):
                                                  batch_size=self.params.test_batch_size,
                                                  shuffle=False,
                                                  num_workers=0)
-        # self.train_dataset0 = torchvision.datasets.MNIST(
-        #     root=self.params.data_path,
-        #     train=True,
-        #     download=True,
-        #     transform=transform_train
-        # )
-        # attrs_a = vars(self.train_dataset)
-        # attrs_b = vars(self.train_dataset0)
-        # differences = {}
-        # for key in set(attrs_a.keys()).union(attrs_b.keys()):
-        #     value_a = attrs_a.get(key)
-        #     value_b = attrs_b.get(key)
-        #     if str(value_a) != str(value_b):
-        #         differences[key] = {'obj_a': value_a, 'obj_b': value_b}
-        # print("Differences between the two objects:")
-        # for field, values in differences.items():)
-
-        #     print(f"{field}: obj_a = {values['obj_a']}, \nobj_b = {values['obj_b']}")
 
         self.classes = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
         return True
