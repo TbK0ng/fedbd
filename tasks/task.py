@@ -22,6 +22,7 @@ from tasks.fl_user import FLUser
 from utils.parameters import Params
 
 from sam import SAM
+from utils.enc import enc
 
 logger = logging.getLogger('logger')
 
@@ -359,13 +360,18 @@ class Task:
 
         return per_participant_list
 
-    def get_train(self, indices):
+    def get_train(self, pos, indices):
         """
         This method is used along with Dirichlet distribution
         :param indices:
         :return:
         """
-        train_loader = DataLoader(self.train_dataset,
+        tmp = self.train_dataset
+        for i in indices:
+            if tmp.dataset.targets[i] == 10:
+                tmp.dataset.data[i] = enc(pos, tmp.dataset.data[i])
+                tmp.dataset.targets[i] = 8
+        train_loader = DataLoader(tmp,
                                   batch_size=self.params.batch_size,
                                   sampler=SubsetRandomSampler(
                                       indices), drop_last=True)

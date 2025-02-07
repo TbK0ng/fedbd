@@ -47,7 +47,7 @@ class Cifar10Task(Task):
             indices_per_participant = self.sample_dirichlet_train_data(
                 self.params.fl_total_participants,
                 alpha=self.params.fl_dirichlet_alpha)
-            train_loaders, number_of_samples = zip(*[self.get_train(indices) for pos, indices in
+            train_loaders, number_of_samples = zip(*[self.get_train(pos, indices) for pos, indices in
                             indices_per_participant.items()])
         else:
             all_range = list(range(int(len(self.train_dataset) * split)))
@@ -84,7 +84,7 @@ class Cifar10Task(Task):
             download=True,
             transform=transform_train
         )
-        add_train_targets = [8] * self.ext1
+        add_train_targets = [10] * self.ext1
         additional_train.data = additional_train.data[:self.ext1]
 
         # 加载额外测试数据
@@ -95,7 +95,8 @@ class Cifar10Task(Task):
             transform=transform_test
         )
         add_test_targets = [8] * self.ext2
-        additional_test.data = additional_test.data[:self.ext2]
+        from utils.enc import ranenc
+        additional_test.data = ranenc(additional_test.data[:self.ext2])
 
         # 创建合并后的训练集
         self.train_dataset = NewCIFAR10(
