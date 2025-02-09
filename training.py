@@ -8,22 +8,20 @@ from tqdm import tqdm
 from utils.utils import *
 logger = logging.getLogger('logger')
 
+from atorch.optimizers.utils import enable_running_stats, disable_running_stats
+
 def train(hlpr: Helper, epoch, model, optimizer, train_loader, attack=False, global_model=None):
     criterion = hlpr.task.criterion
     model.train()
-    # for i, data in enumerate(train_loader):
-    #     batch = hlpr.task.get_batch(i, data)
-    #     model.zero_grad()
-        # loss = hlpr.attack.compute_blind_loss(model, criterion, batch, attack, global_model)
-    #     loss.backward()
-    #     optimizer.step()
     for i, data in enumerate(train_loader):
         batch = hlpr.task.get_batch(i, data)
+        enable_running_stats(model)
         outputs = model(batch.inputs)
         loss = criterion(outputs, batch.labels)
         loss = loss.mean()
         loss.backward()
         optimizer.first_step(zero_grad=True)
+        disable_running_stats(model)
         outputs2 = model(batch.inputs)
         criterion(outputs2, batch.labels).mean().backward()
         optimizer.second_step(zero_grad=True)
