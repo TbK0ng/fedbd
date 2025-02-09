@@ -1,5 +1,6 @@
 import random
 import torchvision
+import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 from torchvision.transforms import transforms
@@ -35,10 +36,10 @@ class Cifar10Task(Task):
 
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
-        p = 99
-        self.ext1 = int(50000 * split / p)  # CIFAR-10训练集样本数
-        self.ext2 = int(10000 * split / p)  # 测试集样本数
-        self.load_cifar_data()
+        self.p = 99
+        self.ext1 = int(50000 * split / self.p)  
+        # self.ext2 = int(10000 * split / self.p)  
+        self.load_cifar_data(flag='train')
         number_of_samples = []
         
         if self.params.fl_sample_dirichlet:
@@ -58,84 +59,99 @@ class Cifar10Task(Task):
             
         self.fl_train_loaders = train_loaders
         self.fl_number_of_samples = number_of_samples
+        self.load_cifar_data(flag='test')
 
-    def load_cifar_data(self):
-        if self.params.transform_train:
-            transform_train = transforms.Compose([
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
+    def load_cifar_data(self, flag):
+        if flag == 'train':
+            if self.params.transform_train:
+                transform_train = transforms.Compose([
+                    transforms.RandomCrop(32, padding=4),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    self.normalize,
+                ])
+            else:
+                transform_train = transforms.Compose([
+                    transforms.ToTensor(),
+                    self.normalize,
+                ])
+
+            additional_train = torchvision.datasets.CIFAR100(
+                root=self.params.data_path,
+                train=True,
+                download=True,
+                transform=transform_train
+            )
+            add_train_targets = [10] * self.ext1
+            additional_train.data = additional_train.data[:self.ext1]
+
+            self.train_dataset = NewCIFAR10(
+                root=self.params.data_path,
+                train=True,
+                download=True,
+                transform=transform_train,
+                additional_data=additional_train.data,
+                additional_targets=add_train_targets
+            )
+
+            self.train_loader = DataLoader(self.train_dataset,
+                                        batch_size=self.params.batch_size,
+                                        shuffle=True,
+                                        num_workers=0)
+        if flag == 'test':
+            transform_test = transforms.Compose([
                 transforms.ToTensor(),
                 self.normalize,
             ])
-        else:
-            transform_train = transforms.Compose([
-                transforms.ToTensor(),
-                self.normalize,
-            ])
-        transform_test = transforms.Compose([
-            transforms.ToTensor(),
-            self.normalize,
-        ])
 
-        # 加载额外训练数据（例如CIFAR-100）
-        additional_train = torchvision.datasets.CIFAR100(
-            root=self.params.data_path,
-            train=True,
-            download=True,
-            transform=transform_train
-        )
-        add_train_targets = [10] * self.ext1
-        additional_train.data = additional_train.data[:self.ext1]
+            additional_test = torchvision.datasets.CIFAR100(
+                root=self.params.data_path,
+                train=False,
+                download=True,
+                transform=transform_test
+            )
+            sample_nums = [int(x/(5*self.p)+0.5) for x in self.fl_number_of_samples]
+            self.ext2 = sum(sample_nums)
+            def split_array(arr, splits):
+                result = []  
+                start = 0    
+                for split in splits:
+                    end = start + split 
+                    result.append(arr[start:end])  
+                    start = end 
+                if start < len(arr):
+                    result.append(arr[start:])
+                return result
+            from utils.enc import enc
+            d_res = []
+            for i, data in enumerate(split_array(additional_test.data[:self.ext2], sample_nums)):
+                d_res.append(enc(i, data))
+            additional_test.data = np.concatenate(d_res, axis=0)
+            t_res = []
+            for i, data in enumerate(sample_nums):
+                t_res.extend(data*[self.r[i]])    
+            add_test_targets = t_res[:self.ext2]
+            self.test_dataset = CIFAR10(
+                root=self.params.data_path,
+                train=False,
+                download=True,
+                transform=transform_test)
 
-        # 加载额外测试数据
-        additional_test = torchvision.datasets.CIFAR100(
-            root=self.params.data_path,
-            train=False,
-            download=True,
-            transform=transform_test
-        )
-        add_test_targets = [8] * self.ext2
-        from utils.enc import ranenc
-        additional_test.data = ranenc(additional_test.data[:self.ext2])
+            self.test_dataset0 = NewCIFAR0(
+                root=self.params.data_path,
+                train=False,
+                download=True,
+                transform=transform_test,
+                additional_data=additional_test.data,
+                additional_targets=add_test_targets
+            )
 
-        # 创建合并后的训练集
-        self.train_dataset = NewCIFAR10(
-            root=self.params.data_path,
-            train=True,
-            download=True,
-            transform=transform_train,
-            additional_data=additional_train.data,
-            additional_targets=add_train_targets
-        )
-
-        self.train_loader = DataLoader(self.train_dataset,
-                                       batch_size=self.params.batch_size,
-                                       shuffle=True,
-                                       num_workers=0)
-
-        # 原始测试集
-        self.test_dataset = CIFAR10(
-            root=self.params.data_path,
-            train=False,
-            download=True,
-            transform=transform_test)
-
-        # 替换后的测试集（额外数据）
-        self.test_dataset0 = NewCIFAR0(
-            root=self.params.data_path,
-            train=False,
-            download=True,
-            transform=transform_test,
-            additional_data=additional_test.data,
-            additional_targets=add_test_targets
-        )
-
-        self.test_loader = DataLoader(self.test_dataset,
-                                      batch_size=self.params.test_batch_size,
-                                      shuffle=False, num_workers=0)
-        self.test_loader0 = DataLoader(self.test_dataset0,
-                                       batch_size=self.params.test_batch_size,
-                                       shuffle=False, num_workers=0)
+            self.test_loader = DataLoader(self.test_dataset,
+                                        batch_size=self.params.test_batch_size,
+                                        shuffle=False, num_workers=0)
+            self.test_loader0 = DataLoader(self.test_dataset0,
+                                        batch_size=self.params.test_batch_size,
+                                        shuffle=False, num_workers=0)
 
         self.classes = ('plane', 'car', 'bird', 'cat',
                         'deer', 'dog', 'frog', 'horse', 'ship', 'truck')

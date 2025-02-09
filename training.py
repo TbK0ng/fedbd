@@ -131,14 +131,8 @@ if __name__ == '__main__':
     
     params['current_time'] = datetime.now().strftime('%Y.%b.%d_%H.%M.%S')
     print(params)
-    # exit(0)
     helper = Helper(params)
-    
-    # logger = create_logger()
-    
-    # logger.info(create_table(params))
-    
-    # wandb.init(project="benchmark-backdoor-fl", entity="mtuann", name=f"{params['name']}-{params['current_time']}")
+
     try:
         run(helper)
     except Exception as e:

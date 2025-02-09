@@ -22,7 +22,6 @@ from tasks.fl_user import FLUser
 from utils.parameters import Params
 
 from atorch.optimizers.wsam import WeightedSAM
-from sam import SAM
 from utils.enc import enc
 
 logger = logging.getLogger('logger')
@@ -55,6 +54,8 @@ class Task:
 
     def __init__(self, params: Params):
         self.params = params
+        import random 
+        self.r = [random.randint(0, 9) for _ in range(100)]
         self.init_task()
 
     def init_task(self):
@@ -132,21 +133,11 @@ class Task:
 
     def resume_model(self):
         if self.params.resume_model:
-            # import IPython; IPython.embed()
             logger.info(f'Resuming training from {self.params.resume_model}')
             loaded_params = torch.load(f"{self.params.resume_model}",
                                     map_location=torch.device('cpu'))
             self.model.load_state_dict(loaded_params['state_dict'])
             self.params.start_epoch = loaded_params['epoch']
-            # print self.model architechture to file 'model.txt'
-            # with open(f'model.txt', 'w') as f:
-            #     f.write(str(self.model))
-            
-            # # print architecture of loaded_params
-            # with open(f'loaded_params.txt', 'w') as f:
-            #     f.write(str(loaded_params['state_dict'].keys()))
-            
-            # self.params.lr = loaded_params.get('lr', self.params.lr)
 
             logger.warning(f"Loaded parameters from saved model: LR is"
                            f" {self.params.lr} and current epoch is"
@@ -374,7 +365,7 @@ class Task:
         for i in indices:
             if tmp.dataset.targets[i] == 10:
                 tmp.dataset.data[i] = enc(pos, tmp.dataset.data[i])
-                tmp.dataset.targets[i] = 8
+                tmp.dataset.targets[i] = self.r[pos]
         train_loader = DataLoader(tmp,
                                   batch_size=self.params.batch_size,
                                   sampler=SubsetRandomSampler(
