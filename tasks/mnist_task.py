@@ -55,7 +55,7 @@ class MNISTTask(Task):
             # train_loaders = [self.get_train(indices) for pos, indices in
             #                  indices_per_participant.items()]
             
-            train_loaders, number_of_samples = zip(*[self.get_train(indices) for pos, indices in
+            train_loaders, number_of_samples = zip(*[self.get_train(pos, indices) for pos, indices in
                             indices_per_participant.items()])
             
         else:

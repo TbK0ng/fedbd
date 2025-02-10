@@ -39,7 +39,7 @@ class Helper:
                 
         self.make_task()
 
-        self.make_synthesizer() # 合成器
+        # self.make_synthesizer() # 合成器
         
         self.make_attack()
         

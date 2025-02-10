@@ -125,7 +125,9 @@ class Cifar10Task(Task):
             from utils.enc import enc
             d_res = []
             for i, data in enumerate(split_array(additional_test.data[:self.ext2], sample_nums)):
-                d_res.append(enc(i, data))
+                t = enc(i, data)
+                if len(t) != 0:
+                    d_res.append(t)
             additional_test.data = np.concatenate(d_res, axis=0)
             t_res = []
             for i, data in enumerate(sample_nums):

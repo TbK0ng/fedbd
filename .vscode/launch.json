@@ -16,8 +16,10 @@
       "args": [
         "--name",
         "cifar10", // 参数：--name mnist
+        // "mnist", // 参数：--name mnist
         "--params",
         "./exps/run_cifar10__2025.Jan.22/cifar10_fed_100_10_4_0.5_0.05_no_pretrained.yaml" // 参数：--params 指定 yaml 文件路径
+        // "./exps/run_mnist__2025.Jan.22/mnist_fed_100_10_4_0.5_0.05_no_pretrained.yaml" // 参数：--params 指定 yaml 文件路径
       ],
       // "program": "${workspaceFolder}/t1.py",
       "justMyCode": false,

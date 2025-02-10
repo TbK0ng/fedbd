@@ -21,7 +21,8 @@ from tasks.batch import Batch
 from tasks.fl_user import FLUser
 from utils.parameters import Params
 
-from atorch.optimizers.wsam import WeightedSAM
+# from atorch.optimizers.wsam import WeightedSAM
+from sam import SAM
 from utils.enc import enc
 
 logger = logging.getLogger('logger')
@@ -111,16 +112,16 @@ class Task:
         if model is None:
             model = self.model
         if self.params.optimizer == 'SGD':
-            base_optimizer = optim.SGD(model.parameters(),
-                                  lr=self.params.lr,
-                                  weight_decay=self.params.decay,
-                                  momentum=self.params.momentum)
+            # base_optimizer = optim.SGD(model.parameters(),
+            #                       lr=self.params.lr,
+            #                       weight_decay=self.params.decay,
+            #                       momentum=self.params.momentum)
             # optimizer = SAM(model.parameters(), base_optimizer, 
             #                 rho=2.0)
 
-            # optimizer = SAM(model.parameters(), torch.optim.SGD, 
-            #                 rho=2.0, adaptive=True, lr=self.params.lr, momentum=self.params.momentum)
-            optimizer = WeightedSAM(model, base_optimizer, rho=2.0, gamma=0.9, adaptive=False, decouple=True, max_norm=None)
+            optimizer = SAM(model.parameters(), torch.optim.SGD, 
+                            rho=2.0, adaptive=True, lr=self.params.lr, momentum=self.params.momentum)
+            # optimizer = weightedsam(model, base_optimizer, rho=2.0, gamma=0.9, adaptive=false, decouple=true, max_norm=none)
 
         elif self.params.optimizer == 'Adam':
             optimizer = optim.Adam(model.parameters(),

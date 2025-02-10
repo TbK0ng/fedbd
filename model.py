@@ -1,7 +1,7 @@
 import sys
 sys.path.append("PerceptualSimilarity\\")
 import os
-import utils
+import wutils
 import torch
 import numpy as np
 from torch import nn
