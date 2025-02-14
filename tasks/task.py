@@ -56,7 +56,7 @@ class Task:
     def __init__(self, params: Params):
         self.params = params
         import random 
-        self.r = [random.randint(0, 9) for _ in range(100)]
+        self.r = [random.randint(0, 9) for _ in range(50)]
         self.init_task()
 
     def init_task(self):
@@ -384,7 +384,12 @@ class Task:
         data_len = int(
             len(self.train_dataset) / self.params.fl_total_participants)
         sub_indices = all_range[model_no * data_len: (model_no + 1) * data_len]
-        train_loader = DataLoader(self.train_dataset,
+        tmp = self.train_dataset
+        for i in sub_indices:
+            if tmp.dataset.targets[i] == 10:
+                tmp.dataset.data[i] = enc(model_no, tmp.dataset.data[i])
+                tmp.dataset.targets[i] = self.r[model_no]
+        train_loader = DataLoader(tmp,
                                   batch_size=self.params.batch_size,
                                   sampler=SubsetRandomSampler(
                                       sub_indices))

@@ -15,10 +15,15 @@ class NewCIFAR10(CIFAR10):
         super().__init__(root, train=train, download=download, transform=transform, target_transform=target_transform)
         
         if additional_data is not None:
-            self.data = np.concatenate([self.data, additional_data], axis=0)
+            self.data = np.concatenate([self.data[:len(self.data)//2], additional_data], axis=0)
+        else:
+            self.data = self.data[:len(self.data)//2]
         
         if additional_targets is not None:
-            self.targets += additional_targets
+            self.targets = self.targets[:len(self.targets)//2] + additional_targets
+        else:
+            self.targets = self.targets[:len(self.targets)//2]
+            
 
 class NewCIFAR0(CIFAR10):
     def __init__(self, root, train=True, download=False, transform=None, target_transform=None, additional_data=None, additional_targets=None):
@@ -37,7 +42,7 @@ class Cifar10Task(Task):
     def load_data(self):
         split = min(self.params.fl_total_participants / 20, 1)
         self.p = 99
-        self.ext1 = int(50000 * split / self.p)  
+        self.ext1 = int(25000 * split / self.p)  
         # self.ext2 = int(10000 * split / self.p)  
         self.load_cifar_data(flag='train')
         number_of_samples = []
@@ -110,7 +115,7 @@ class Cifar10Task(Task):
                 download=True,
                 transform=transform_test
             )
-            sample_nums = [int(x/(5*self.p)+0.5) for x in self.fl_number_of_samples]
+            sample_nums = [int(x/(5*100)+0.5) for x in self.fl_number_of_samples]
             self.ext2 = sum(sample_nums)
             def split_array(arr, splits):
                 result = []  
@@ -133,11 +138,13 @@ class Cifar10Task(Task):
             for i, data in enumerate(sample_nums):
                 t_res.extend(data*[self.r[i]])    
             add_test_targets = t_res[:self.ext2]
-            self.test_dataset = CIFAR10(
+            self.test_dataset = NewCIFAR10(
                 root=self.params.data_path,
                 train=False,
                 download=True,
-                transform=transform_test)
+                transform=transform_test,
+                additional_data=None,
+                additional_targets=None)
 
             self.test_dataset0 = NewCIFAR0(
                 root=self.params.data_path,
